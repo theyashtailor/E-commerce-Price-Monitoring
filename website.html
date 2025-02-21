@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Competitor Price Analysis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 50%;
+            margin: auto;
+        }
+        input, button {
+            padding: 10px;
+            margin: 10px;
+            width: 80%;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #insights {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Competitor Price Analysis</h2>
+        <p>Enter competitor product page URL to fetch price insights.</p>
+        <input type="text" id="urlInput" placeholder="Enter competitor product URL">
+        <button onclick="fetchPrice()">Get Price Insights</button>
+        <p id="result"></p>
+        <p id="insights"></p>
+    </div>
+
+    <script>
+        function fetchPrice() {
+            const url = document.getElementById('urlInput').value;
+            if (!url) {
+                document.getElementById('result').innerText = 'Please enter a valid URL';
+                return;
+            }
+            document.getElementById('result').innerText = 'Fetching data...';
+            
+            fetch('https://your-api-endpoint.com/scrape', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('result').innerText = 'Error: ' + data.error;
+                } else {
+                    document.getElementById('result').innerText = `Product: ${data.product}\nPrice: ${data.price}\nAvailability: ${data.availability}`;
+                    generateInsights(data.price);
+                }
+            })
+            .catch(error => document.getElementById('result').innerText = 'Failed to fetch data');
+        }
+
+        function generateInsights(price) {
+            const threshold = 50; // Example price threshold for insights
+            let insightsText = '';
+            if (parseFloat(price.replace(/[^0-9.]/g, '')) > threshold) {
+                insightsText = 'This product is priced above market average. Consider adjusting your pricing strategy.';
+            } else {
+                insightsText = 'This product is competitively priced. You may gain an advantage by offering discounts or better promotions.';
+            }
+            document.getElementById('insights').innerText = insightsText;
+        }
+    </script>
+</body>
+</html>
