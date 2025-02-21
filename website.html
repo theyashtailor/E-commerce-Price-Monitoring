@@ -1,90 +1,50 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Competitor Price Analysis</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            text-align: center;
-            padding: 20px;
-        }
-        .container {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 50%;
-            margin: auto;
-        }
-        input, button {
-            padding: 10px;
-            margin: 10px;
-            width: 80%;
-        }
-        button {
-            background-color: #007BFF;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        #insights {
-            margin-top: 20px;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Competitor Price Analysis</h2>
-        <p>Enter competitor product page URL to fetch price insights.</p>
-        <input type="text" id="urlInput" placeholder="Enter competitor product URL">
-        <button onclick="fetchPrice()">Get Price Insights</button>
-        <p id="result"></p>
-        <p id="insights"></p>
-    </div>
+from flask import Flask, request, jsonify
+import requests
+from bs4 import BeautifulSoup
 
-    <script>
-        function fetchPrice() {
-            const url = document.getElementById('urlInput').value;
-            if (!url) {
-                document.getElementById('result').innerText = 'Please enter a valid URL';
-                return;
-            }
-            document.getElementById('result').innerText = 'Fetching data...';
-            
-            fetch('http://10.247.85.225:5000/scrape', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: url })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    document.getElementById('result').innerText = 'Error: ' + data.error;
-                } else {
-                    document.getElementById('result').innerText = `Product: ${data.product}\nPrice: ${data.price}\nAvailability: ${data.availability}`;
-                    generateInsights(data.price);
-                }
-            })
-            .catch(error => document.getElementById('result').innerText = 'Failed to fetch data');
-        }
+app = Flask(__name__)
 
-        function generateInsights(price) {
-            const threshold = 50; // Example price threshold for insights
-            let insightsText = '';
-            if (parseFloat(price.replace(/[^0-9.]/g, '')) > threshold) {
-                insightsText = 'This product is priced above market average. Consider adjusting your pricing strategy.';
-            } else {
-                insightsText = 'This product is competitively priced. You may gain an advantage by offering discounts or better promotions.';
-            }
-            document.getElementById('insights').innerText = insightsText;
-        }
-    </script>
-</body>
-</html>
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+}
+
+def scrape_walmart(url):
+    """Scrape product details from Walmart product page."""
+    response = requests.get(url, headers=HEADERS)
+    
+    if response.status_code != 200:
+        return {'error': f'Failed to retrieve data: {response.status_code}'}
+    
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Extract product name
+    product_name_tag = soup.find('h1', class_='main-title')
+    product_name = product_name_tag.text.strip() if product_name_tag else 'N/A'
+    
+    # Extract price
+    price_tag = soup.find('span', class_='price-wrap')
+    price = price_tag.text.strip() if price_tag else 'N/A'
+    
+    # Extract availability
+    availability_tag = soup.find('div', class_='Availability')
+    availability = availability_tag.text.strip() if availability_tag else 'N/A'
+    
+    return {
+        'product': product_name,
+        'price': price,
+        'availability': availability
+    }
+
+@app.route('/scrape', methods=['POST'])
+def scrape():
+    data = request.get_json()
+    url = data.get('url')
+    
+    if not url:
+        return jsonify({'error': 'No URL provided'}), 400
+    
+    result = scrape_walmart(url)
+    return jsonify(result)
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
